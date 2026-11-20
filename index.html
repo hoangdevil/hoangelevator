@@ -1,0 +1,2041 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <style>
+    a[href*="netlify.com"],
+    a[href*="netlify.app"],
+    [class*="netlify-badge"],
+    [id*="netlify-badge"] {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+  </style>
+</head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ELEVATOR SERVICE - Quản Lý Thang Máy</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- LOGO / FAVICON / PWA ICON (DÙNG CHÍNH FILE logo.png) -->
+  <link rel="icon" type="image/png" href="logo.png" />
+  <link rel="apple-touch-icon" href="logo.png" />
+  <meta name="theme-color" content="#05080f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="ELEVATOR SERVICE" />
+  <link rel="manifest" href="manifest.json" />
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, sans-serif;
+      background: #05080f;
+      color: #e2e8f0;
+      margin: 0;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .ambient-glow {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle at 28% 48%, rgba(20, 184, 166, 0.24), rgba(14, 165, 233, 0.08) 38%, transparent 70%);
+      opacity: 0;
+      transition: opacity 0.45s ease;
+      z-index: 0;
+    }
+    body.lamp-on .ambient-glow {
+      opacity: 1;
+    }
+
+    #dustCanvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .status-radio {
+      width: 16px;
+      height: 16px;
+      accent-color: #38bdf8;
+      cursor: pointer;
+    }
+
+    /* Cây đèn bàn tương tác */
+    .lamp-stage {
+      position: relative;
+      width: 320px;
+      height: 360px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      user-select: none;
+    }
+
+    .lamp-light-cone {
+      position: absolute;
+      top: 122px;
+      left: 50%;
+      transform: translateX(-50%) rotate(-12deg);
+      width: 310px;
+      height: 240px;
+      background: conic-gradient(
+        from 155deg at 50% 0%,
+        rgba(45, 212, 191, 0.36) 0deg,
+        rgba(45, 212, 191, 0.14) 32deg,
+        transparent 68deg
+      );
+      filter: blur(10px);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      pointer-events: none;
+    }
+    body.lamp-on .lamp-light-cone {
+      opacity: 1;
+    }
+
+    .lamp-base {
+      width: 128px;
+      height: 16px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #334155, #0f172a);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.7);
+      position: relative;
+      z-index: 3;
+    }
+
+    .lamp-arm-lower {
+      position: absolute;
+      bottom: 14px;
+      left: 52%;
+      width: 8px;
+      height: 115px;
+      background: linear-gradient(90deg, #475569, #1e293b);
+      transform-origin: bottom center;
+      transform: rotate(-18deg);
+      border-radius: 6px;
+      z-index: 2;
+    }
+
+    .lamp-arm-upper {
+      position: absolute;
+      bottom: 118px;
+      left: 43%;
+      width: 8px;
+      height: 110px;
+      background: linear-gradient(90deg, #475569, #1e293b);
+      transform-origin: bottom center;
+      transform: rotate(36deg);
+      border-radius: 6px;
+      z-index: 2;
+    }
+
+    .lamp-head-group {
+      position: absolute;
+      top: 66px;
+      left: 55%;
+      transform-origin: 25% 45%;
+      transform: rotate(-28deg);
+      transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+      z-index: 4;
+      cursor: pointer;
+    }
+    body.lamp-on .lamp-head-group {
+      transform: rotate(-18deg);
+    }
+
+    .lamp-shade {
+      width: 118px;
+      height: 54px;
+      border-radius: 58px 58px 18px 18px;
+      background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      position: relative;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.55);
+      transition: all 0.35s ease;
+    }
+    body.lamp-on .lamp-shade {
+      box-shadow: 0 0 34px rgba(45, 212, 191, 0.45), inset 0 -10px 18px rgba(45, 212, 191, 0.25);
+      border-color: rgba(45, 212, 191, 0.65);
+    }
+
+    .lamp-bulb {
+      position: absolute;
+      bottom: -7px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 34px;
+      height: 14px;
+      border-radius: 0 0 20px 20px;
+      background: #1e293b;
+      transition: all 0.35s ease;
+    }
+    body.lamp-on .lamp-bulb {
+      background: #99f6e4;
+      box-shadow: 0 6px 24px #2dd4bf, 0 0 42px #14b8a6;
+    }
+
+    .pull-cord-wrap {
+      position: absolute;
+      top: 118px;
+      right: 78px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      z-index: 5;
+    }
+    .pull-cord-line {
+      width: 2px;
+      height: 76px;
+      background: linear-gradient(180deg, rgba(148, 163, 184, 0.3), rgba(226, 232, 240, 0.85));
+      transition: height 0.2s ease;
+    }
+    .pull-cord-knob {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: #64748b;
+      transition: all 0.25s ease;
+    }
+    body.lamp-on .pull-cord-knob {
+      background: #2dd4bf;
+      box-shadow: 0 0 14px rgba(45, 212, 191, 0.9);
+    }
+    .pull-cord-wrap:active .pull-cord-line {
+      height: 96px;
+    }
+    .pull-cord-wrap:active .pull-cord-knob {
+      transform: translateY(4px) scale(1.12);
+    }
+
+    /* Card đăng nhập điều khiển theo đèn */
+    .glass-card {
+      width: 100%;
+      max-width: 450px;
+      background: rgba(13, 19, 33, 0.92);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.72);
+      transition: opacity 0.35s ease, transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), filter 0.35s ease;
+    }
+
+    body:not(.lamp-on) #loginCard {
+      opacity: 0;
+      transform: translateY(14px) scale(0.97);
+      filter: blur(5px);
+      pointer-events: none;
+      visibility: hidden;
+    }
+
+    body.lamp-on #loginCard {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      filter: blur(0);
+      pointer-events: auto;
+      visibility: visible;
+    }
+
+    .btn-teal {
+      background: linear-gradient(135deg, #14b8a6 0%, #0ea5e9 100%);
+      box-shadow: 0 10px 25px rgba(20, 184, 166, 0.28);
+    }
+    .btn-teal:hover {
+      filter: brightness(1.08);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+  <div class="ambient-glow"></div>
+  <canvas id="dustCanvas"></canvas>
+
+  <!-- HEADER -->
+  <header class="relative z-40 bg-slate-900/80 backdrop-blur border-b border-slate-800 px-6 py-3 flex justify-between items-center sticky top-0">
+    <div class="flex items-center space-x-3">
+      <img
+        src="logo.png"
+        alt="ELEVATOR SERVICE Logo"
+        class="w-12 h-12 rounded-xl object-contain bg-[#04132b] border border-sky-400/35 shadow-lg shadow-sky-500/15 shrink-0"
+      />
+      <div>
+        <h1 class="text-lg font-bold tracking-tight text-white">ELEVATOR SERVICE</h1>
+        <p class="text-xs text-slate-400">Hệ thống Quản lý Vận hành & Bảo trì</p>
+      </div>
+    </div>
+
+    <div id="userNavInfo" class="hidden flex items-center space-x-4">
+      <div class="text-right">
+        <span id="navUsername" class="text-sm font-medium text-slate-200 block"></span>
+        <span id="navRole" class="text-xs text-teal-400 block font-semibold"></span>
+      </div>
+      <button type="button" onclick="logout()" class="text-xs bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-lg transition font-medium cursor-pointer">
+        Đăng xuất
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="relative z-10 flex-grow container mx-auto px-4 py-8 max-w-6xl">
+
+    <!-- MÀN HÌNH ĐĂNG NHẬP / ĐĂNG KÝ VỚI ĐÈN CÔNG TẮC -->
+    <div id="authScreen" class="w-full max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-10 items-center justify-items-center py-4">
+
+      <!-- Cột trái: Đèn công tắc -->
+      <div class="flex items-center justify-center">
+        <div class="lamp-stage">
+          <div class="lamp-light-cone"></div>
+          <div class="lamp-arm-lower"></div>
+          <div class="lamp-arm-upper"></div>
+
+          <div id="lampHead" class="lamp-head-group">
+            <div class="lamp-shade">
+              <div class="lamp-bulb"></div>
+            </div>
+          </div>
+
+          <div id="pullCordBtn" class="pull-cord-wrap">
+            <div class="pull-cord-line"></div>
+            <div class="pull-cord-knob"></div>
+          </div>
+
+          <div class="lamp-base"></div>
+        </div>
+      </div>
+
+      <!-- Cột phải: Khung đăng nhập / đăng ký -->
+      <div class="w-full flex items-center justify-center">
+        <div id="loginCard" class="glass-card rounded-3xl p-6 sm:p-8">
+          <div class="flex items-center justify-between gap-2 mb-4">
+            <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-teal-500/10 border border-teal-400/25 text-teal-300 text-[11px] font-semibold whitespace-nowrap">
+              ELEVATOR SERVICE
+            </span>
+            <button
+              id="turnOffLampBtn"
+              type="button"
+              class="px-2.5 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-[11px] font-medium text-slate-300 transition cursor-pointer shrink-0 whitespace-nowrap"
+            >
+              Tắt đèn
+            </button>
+          </div>
+
+          <div class="flex border-b border-slate-700/80 mb-6">
+            <button id="tabLoginBtn" type="button" onclick="switchTab('login')" class="flex-1 pb-3 text-sm font-bold text-teal-400 border-b-2 border-teal-400 transition cursor-pointer whitespace-nowrap">
+              Đăng Nhập
+            </button>
+            <button id="tabRegisterBtn" type="button" onclick="switchTab('register')" class="flex-1 pb-3 text-sm font-semibold text-slate-400 hover:text-white transition cursor-pointer whitespace-nowrap">
+              Đăng Ký Tài Khoản
+            </button>
+          </div>
+
+          <!-- FORM ĐĂNG NHẬP (EMAIL) -->
+          <div id="loginForm" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Email đăng nhập</label>
+              <input type="email" id="loginEmail" placeholder="VD: hoang@gmail.com" class="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-teal-400 text-sm transition">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Mật khẩu</label>
+              <input type="password" id="loginPassword" placeholder="••••••••" class="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-teal-400 text-sm transition">
+            </div>
+            <div class="flex justify-end">
+              <button type="button" onclick="handleForgotPassword()" class="text-xs text-teal-400 hover:underline cursor-pointer">Quên mật khẩu?</button>
+            </div>
+            <button type="button" onclick="handleLogin()" class="w-full btn-teal text-white font-semibold py-3 rounded-xl transition cursor-pointer text-sm">
+              Đăng Nhập Hệ Thống
+            </button>
+          </div>
+
+          <!-- FORM ĐĂNG KÝ (EMAIL + MÃ XÁC NHẬN + CHỜ CHỦ CHÍNH DUYỆT) -->
+          <div id="registerForm" class="space-y-4 hidden">
+            <div>
+              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Họ và Tên</label>
+              <input type="text" id="regName" placeholder="VD: Nguyễn Văn A" class="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-teal-400 text-sm transition">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Email của bạn</label>
+              <div class="flex gap-2">
+                <input type="email" id="regEmail" placeholder="VD: tho@gmail.com" class="flex-1 bg-slate-950/80 border border-slate-700/80 rounded-xl px-3.5 py-3 text-white focus:outline-none focus:border-teal-400 text-sm transition">
+                <button type="button" id="sendOtpBtn" onclick="sendRegistrationOtp()" class="px-3.5 py-3 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 border border-teal-400/40 text-teal-300 font-semibold text-xs whitespace-nowrap transition cursor-pointer">
+                  Gửi mã xác nhận
+                </button>
+              </div>
+              <p id="otpHintText" class="text-[11px] text-slate-400 mt-1">Nhập Email rồi bấm "Gửi mã xác nhận" để lấy mã 6 số.</p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Mã xác nhận (6 số)</label>
+              <input type="text" id="regOtpCode" maxlength="6" inputmode="numeric" placeholder="Nhập 6 số mã xác nhận" class="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl px-4 py-3 text-white tracking-widest font-bold focus:outline-none focus:border-teal-400 text-sm transition">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Mật khẩu (ít nhất 6 ký tự)</label>
+              <input type="password" id="regPassword" placeholder="••••••••" class="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-teal-400 text-sm transition">
+            </div>
+
+            <button type="button" onclick="handleRegister()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl shadow-lg shadow-emerald-600/30 transition cursor-pointer text-sm">
+              Xác Nhận Mã & Gửi Yêu Cầu Duyệt
+            </button>
+          </div>
+
+          <div class="mt-7 text-center text-xs text-slate-500 border-t border-slate-800 pt-4 space-y-1">
+            <p>Product Founder: <span class="text-slate-300 font-semibold">Võ Văn Hoàng (0919853301)</span></p>
+            <p class="text-slate-600">ELEVATOR SERVICE Enterprise © 2026</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- MÀN HÌNH CHÍNH QUẢN LÝ -->
+    <div id="appScreen" class="hidden space-y-8">
+
+      <!-- KHU VỰC DUYỆT & XÓA TÀI KHOẢN (CHỈ CHỦ CHÍNH MỚI THẤY) -->
+      <div id="adminApprovalSection" class="hidden bg-slate-900/95 border border-amber-500/40 rounded-2xl p-6 shadow-xl space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 class="text-lg font-bold text-amber-300 flex items-center gap-2">
+              <span>👑 Quản Lý & Duyệt Tài Khoản Kỹ Thuật Viên / Thành Viên</span>
+              <span id="pendingUsersBadge" class="px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-xs text-amber-200 font-bold">0 chờ duyệt</span>
+            </h3>
+            <p class="text-xs text-slate-400 mt-0.5">Người đăng ký mới đã xác nhận mã sẽ nằm ở đây cho đến khi Chủ chính bấm Duyệt, Khóa hoặc Xóa.</p>
+          </div>
+          <button type="button" onclick="loadRegisteredUsers()" class="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-lg text-slate-200 transition cursor-pointer">
+            Làm mới danh sách
+          </button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs sm:text-sm text-slate-300">
+            <thead class="bg-slate-950/70 text-xs uppercase text-slate-400 border-b border-slate-800">
+              <tr>
+                <th class="p-3">Họ và Tên</th>
+                <th class="p-3">Email</th>
+                <th class="p-3">Ngày Đăng Ký</th>
+                <th class="p-3">Trạng Thái</th>
+                <th class="p-3 text-center">Quản Lý / Duyệt</th>
+              </tr>
+            </thead>
+            <tbody id="registeredUsersTableBody">
+              <tr><td colspan="5" class="p-4 text-center text-slate-500">Đang tải danh sách tài khoản...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- FORM THÊM / CẬP NHẬT THANG MÁY -->
+      <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-6 shadow-xl">
+        <h3 class="text-lg font-bold text-white mb-4 flex items-center space-x-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-teal-400"></span>
+          <span>Thêm Hồ Sơ Thang Máy / Cập Nhật Bảo Trì</span>
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div id="projNameWrapper" class="relative">
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Tên công trình / Chủ đầu tư</label>
+            <input
+              type="text"
+              id="projName"
+              autocomplete="off"
+              onfocus="showProjectSuggestions()"
+              oninput="showProjectSuggestions()"
+              placeholder="VD: Tòa nhà / Nhà anh Nam - Long Khánh"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-teal-400 text-sm"
+            >
+            <div
+              id="projNameSuggestions"
+              class="hidden absolute left-0 right-0 mt-1 bg-slate-950 border border-teal-500/30 rounded-xl shadow-2xl max-h-56 overflow-y-auto z-30 divide-y divide-slate-800/80"
+            ></div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Địa chỉ lắp đặt</label>
+            <input type="text" id="projAddress" placeholder="VD: Phường Bảo Vinh, Đồng Nai" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-teal-400 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Hãng thang / Tủ điều khiển</label>
+            <select id="projControllerSelect" onchange="checkCustomController(this)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-teal-400 text-sm mb-2">
+              <optgroup label="Tủ & Hệ thống phổ biến">
+                <option value="STEP AS380 / AS380S">STEP AS380 / AS380S</option>
+                <option value="INVT EC160">INVT EC160</option>
+                <option value="Fuji FRENIC-Lift">Fuji FRENIC-Lift</option>
+                <option value="ZIEHL-ABEGG ZAdynpro">ZIEHL-ABEGG ZAdynpro</option>
+                <option value="Surapid Optimax">Surapid Optimax</option>
+              </optgroup>
+              <optgroup label="Hãng Thang Máy Quốc Tế & Liên Doanh">
+                <option value="Mitsubishi Elevator">Mitsubishi Elevator</option>
+                <option value="Otis Elevator">Otis Elevator</option>
+                <option value="Schindler Elevator">Schindler Elevator</option>
+                <option value="ThyssenKrupp / TK Elevator">ThyssenKrupp / TK Elevator</option>
+                <option value="Kone Elevator">Kone Elevator</option>
+                <option value="Hitachi Elevator">Hitachi Elevator</option>
+                <option value="Toshiba Elevator">Toshiba Elevator</option>
+              </optgroup>
+              <option value="CUSTOM">✏️ Nhập hãng khác (Tùy chỉnh)...</option>
+            </select>
+            <input type="text" id="projControllerCustom" placeholder="Nhập tên hãng thang máy khác..." class="hidden w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-teal-400 text-sm">
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Kiểu thang (chọn được nhiều kiểu cho 1 công trình)</label>
+            <div class="flex flex-wrap gap-2.5 bg-slate-900 border border-slate-700 rounded-xl p-3">
+              <label class="inline-flex items-center gap-2 text-xs font-medium text-slate-200 bg-slate-800/90 hover:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 cursor-pointer select-none">
+                <input type="checkbox" name="elevatorType" value="Thang khách" class="accent-teal-400 w-4 h-4 rounded">
+                <span>Thang khách</span>
+              </label>
+              <label class="inline-flex items-center gap-2 text-xs font-medium text-slate-200 bg-slate-800/90 hover:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 cursor-pointer select-none">
+                <input type="checkbox" name="elevatorType" value="Thang tải" class="accent-teal-400 w-4 h-4 rounded">
+                <span>Thang tải</span>
+              </label>
+              <label class="inline-flex items-center gap-2 text-xs font-medium text-slate-200 bg-slate-800/90 hover:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 cursor-pointer select-none">
+                <input type="checkbox" name="elevatorType" value="Thang tời" class="accent-teal-400 w-4 h-4 rounded">
+                <span>Thang tời</span>
+              </label>
+              <label class="inline-flex items-center gap-2 text-xs font-medium text-slate-200 bg-slate-800/90 hover:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 cursor-pointer select-none">
+                <input type="checkbox" name="elevatorType" value="Thang cuốn" class="accent-teal-400 w-4 h-4 rounded">
+                <span>Thang cuốn</span>
+              </label>
+              <input
+                type="text"
+                id="projTypeOther"
+                placeholder="Kiểu thang khác (nếu có)..."
+                class="flex-1 min-w-[160px] bg-slate-950 border border-slate-700/80 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-400"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Số lượng thang & Số điểm dừng (Stops)</label>
+            <input type="text" id="projSpecs" placeholder="VD: 2 thang khách (6 Stops) + 1 thang tải (4 Stops)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-teal-400 text-sm">
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Ngày bảo trì tiếp theo</label>
+            <input type="date" id="nextMaintenanceDate" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-teal-400 text-sm">
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Hạn kiểm định an toàn (Đăng kiểm)</label>
+            <input type="date" id="inspectionExpiryDate" class="w-full md:w-1/2 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-teal-400 text-sm">
+          </div>
+        </div>
+
+        <!-- CHECKLIST THỰC HIỆN THEO MẪU 70 HẠNG MỤC -->
+        <div id="formChecklistSection" class="mt-5 bg-slate-950/95 border border-slate-700/90 rounded-2xl p-4 sm:p-5 space-y-4"></div>
+
+        <!-- GHI CHÚ / TỔNG KẾT SAU BẢO TRÌ -->
+        <div class="mt-4">
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Ghi chú thiết bị / Tình trạng kỹ thuật (mỗi dòng 1 gạch đầu dòng)</label>
+            <button type="button" onclick="addBulletLine()" class="text-xs text-teal-400 hover:text-teal-300 font-medium cursor-pointer">+ Thêm dòng gạch đầu dòng</button>
+          </div>
+          <textarea
+            id="projNote"
+            rows="3"
+            onfocus="initBulletOnFocus(this)"
+            onkeydown="handleBulletEnter(event, this)"
+            placeholder="• Hạng mục đã bảo trì, vệ sinh.&#10;• Hạng mục phát hiện bất thường.&#10;• Linh kiện cần thay thế."
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-teal-400 text-sm leading-relaxed"
+          ></textarea>
+        </div>
+
+        <div class="mt-4 flex justify-end">
+          <button type="button" onclick="addElevator()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-2.5 rounded-xl shadow-lg shadow-emerald-600/30 transition text-sm cursor-pointer">
+            + Lưu Hồ Sơ Thang Máy
+          </button>
+        </div>
+      </div>
+
+      <!-- BẢNG DANH SÁCH THANG MÁY & KIỂM ĐỊNH -->
+      <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-6 shadow-xl">
+        <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+          <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+            <span>📋 Danh Sách Theo dõi & Dịch vụ</span>
+          </h3>
+          <div class="flex space-x-2">
+            <button type="button" onclick="loadElevators()" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg transition cursor-pointer">Tải Lại</button>
+            <button type="button" onclick="deleteAllElevators()" class="text-xs bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/30 px-3 py-1.5 rounded-lg transition font-semibold cursor-pointer">Xóa Danh Sách</button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-300">
+            <thead class="bg-slate-900/50 text-xs uppercase text-slate-400 border-b border-slate-700">
+              <tr>
+                <th class="p-3">Công Trình / Khách Hàng</th>
+                <th class="p-3">Hãng / Tủ Điều Khiển</th>
+                <th class="p-3">Kiểu Thang & Thông Số</th>
+                <th class="p-3">Lịch Bảo Trì</th>
+                <th class="p-3">Hạn Kiểm Định</th>
+                <th class="p-3">Ngày Tạo</th>
+                <th class="p-3 text-center">Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody id="elevatorTableBody">
+              <tr><td colspan="7" class="p-4 text-center text-slate-500">Đang tải dữ liệu...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="listFooterMeta" class="mt-4 pt-3 border-t border-slate-700/80 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+          <span id="listCountSummary">Tổng số hồ sơ: 0</span>
+          <span id="listLatestCreatedAt">Ngày tạo gần nhất: --</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL XEM CHI TIẾT & CHECKLIST BẢO TRÌ -->
+  <div id="detailModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl space-y-5 relative max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-start gap-3 border-b border-slate-800 pb-3">
+        <div>
+          <h3 id="modalTitle" class="text-lg font-bold text-white">Chi tiết kỹ thuật thang máy</h3>
+          <p id="modalSub" class="text-xs text-slate-400"></p>
+          <p id="modalCreatedAt" class="text-[11px] text-teal-400 mt-0.5"></p>
+        </div>
+        <button type="button" onclick="closeModal()" class="text-slate-400 hover:text-white font-bold text-2xl leading-none px-2 cursor-pointer">&times;</button>
+      </div>
+
+      <div id="modalChecklistSection" class="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-4"></div>
+
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Nhật ký kỹ thuật / Ghi chú</label>
+        <div id="modalNoteDisplay" class="text-xs text-slate-300 bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1"></div>
+      </div>
+
+      <div class="flex space-x-3 pt-2">
+        <button type="button" onclick="confirmModalMaintenance()" class="flex-1 btn-teal text-white font-semibold py-2.5 rounded-xl transition text-sm cursor-pointer">
+          Xác Nhận Hoàn Tất Bảo Trì
+        </button>
+        <button type="button" onclick="closeModal()" class="px-4 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2.5 rounded-xl transition text-sm cursor-pointer">
+          Đóng
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="relative z-10 text-center py-6 text-xs text-slate-500 border-t border-slate-800/80 mt-10 space-y-1">
+    <p>ELEVATOR SERVICE &bull; Phát triển bởi <span class="text-slate-400 font-medium">Võ Văn Hoàng</span></p>
+    <p>© 2026 All Rights Reserved</p>
+  </footer>
+
+  <!-- ĐIỀU KHIỂN ĐÈN CÔNG TẮC, CHECKLIST 5 NHÓM (70 HẠNG MỤC), GỢI Ý, GẠCH ĐẦU DÒNG & HẠT BỤI -->
+  <script>
+    const PROJECT_HISTORY_KEY = "elevator_service_project_history_v1";
+    const KNOWN_ELEVATOR_TYPES = ["Thang khách", "Thang tải", "Thang tời", "Thang cuốn"];
+    const STATUS_OPTIONS = ["Đạt", "Không đạt", "Theo dõi", "N/A"];
+
+    const CHECKLIST_GROUPS = [
+      {
+        id: "phong-may",
+        title: "1. Phòng máy",
+        items: [
+          "Kiểm tra vệ sinh, chiếu sáng và thông gió phòng máy",
+          "Kiểm tra nhiệt độ phòng máy và độ ẩm môi trường",
+          "Kiểm tra cửa ra vào, khóa an toàn và bảng cảnh báo phòng máy",
+          "Kiểm tra máy kéo / động cơ chính (tiếng ồn, độ rung, nhiệt độ)",
+          "Kiểm tra dầu bôi trơn hộp số / máy kéo và mức dầu",
+          "Kiểm tra phanh cơ và phanh điện từ động cơ (khe hở, má phanh)",
+          "Kiểm tra puly kéo, rãnh puly và độ mòn rãnh",
+          "Kiểm tra bộ giới hạn tốc độ (Governor) trên phòng máy",
+          "Kiểm tra tủ điều khiển chính, đấu nối dây và tiếp địa (PE)",
+          "Kiểm tra biến tần / bộ điều khiển (lỗi, quạt làm mát, nhiệt độ)",
+          "Kiểm tra aptomat, contactor, rơ le và thiết bị bảo vệ quá tải",
+          "Kiểm tra bộ cứu hộ tự động ARD và tình trạng bình ắc quy",
+          "Kiểm tra hệ thống phanh khẩn cấp / tay quay nhả phanh cứu hộ",
+          "Kiểm tra cáp tải đầu neo trên phòng máy (chốt, lò xo, kẹp cáp)",
+          "Kiểm tra lỗ thông cáp sàn phòng máy và chống rơi dị vật",
+          "Kiểm tra nhật ký bảo trì, sơ đồ nguyên lý và tài liệu kỹ thuật"
+        ]
+      },
+      {
+        id: "dinh-cabin-gieng-thang",
+        title: "2. Đỉnh cabin và giếng thang",
+        items: [
+          "Kiểm tra vệ sinh nóc cabin và bên trong giếng thang",
+          "Kiểm tra đèn chiếu sáng nóc cabin và ổ cắm 220V/12V",
+          "Kiểm tra nút dừng khẩn cấp (STOP) và tay điều khiển chạy kiểm tra trên nóc cabin",
+          "Kiểm tra lan can bảo vệ an toàn trên nóc cabin",
+          "Kiểm tra giày dẫn hướng cabin (guide shoe / roller guide) phía trên",
+          "Kiểm tra độ bôi trơn ray dẫn hướng cabin",
+          "Kiểm tra cơ cấu cửa cabin, motor cửa, dây curoa và khóa cửa cabin",
+          "Kiểm tra cảm biến an toàn / mành hồng ngoại / thanh an toàn cửa cabin",
+          "Kiểm tra cáp tải, cáp bù, xích bù và cáp dẹt (traveling cable)",
+          "Kiểm tra puly dẫn hướng dưới cabin và puly đối trọng",
+          "Kiểm tra khung đối trọng, guốc trượt đối trọng và đối trọng gang/bê tông",
+          "Kiểm tra ray dẫn hướng đối trọng và độ thẳng hàng",
+          "Kiểm tra công tắc hành trình trên/dưới và công tắc an toàn vượt hành trình",
+          "Kiểm tra nam châm / cảm biến tầng, cảm biến dừng tầng và leveling",
+          "Kiểm tra dây cáp điện, máng cáp và kẹp cố định trong giếng thang",
+          "Kiểm tra khe hở giữa cabin và vách giếng thang / đối trọng",
+          "Kiểm tra hệ thống chiếu sáng và thông gió trong giếng thang"
+        ]
+      },
+      {
+        id: "cabin-cua-tang",
+        title: "3. Cabin và cửa tầng",
+        items: [
+          "Kiểm tra vệ sinh sàn, vách, trần và gương trong cabin",
+          "Kiểm tra đèn chiếu sáng cabin, quạt thông gió và chuông báo động",
+          "Kiểm tra hệ thống liên lạc nội bộ (intercom / điện thoại khẩn cấp)",
+          "Kiểm tra bảng điều khiển trong cabin (nút bấm, màn hình hiển thị tầng)",
+          "Kiểm tra độ bằng phẳng dừng tầng (sai số dừng tầng)",
+          "Kiểm tra độ êm ái, độ rung và tiếng ồn khi cabin khởi động/dừng",
+          "Kiểm tra quá trình đóng/mở cửa cabin (tốc độ, lực đóng, độ mượt)",
+          "Kiểm tra chức năng tự động mở cửa khi gặp vật cản (mành quang / mép cửa)",
+          "Kiểm tra nút gọi tầng, đèn báo hướng và màn hình hiển thị tại các tầng",
+          "Kiểm tra cánh cửa tầng, ngưỡng cửa (sill) và khe hở cửa tầng",
+          "Kiểm tra khóa cơ khí và tiếp điểm điện cửa tầng (đảm bảo mở được bằng chìa khóa chuyên dụng)",
+          "Kiểm tra cơ cấu tự đóng cửa tầng (đối trọng / lò xo đóng cửa tầng)",
+          "Kiểm tra khe hở giữa cửa cabin và cửa tầng",
+          "Kiểm tra vách ngăn / tấm chắn an toàn dưới ngưỡng cửa cabin",
+          "Kiểm tra tình trạng gioăng, nẹp, bản lề và phụ kiện cửa tầng"
+        ]
+      },
+      {
+        id: "ho-pit",
+        title: "4. Hố pit",
+        items: [
+          "Kiểm tra vệ sinh và tình trạng khô ráo hố pit",
+          "Kiểm tra công tắc dừng khẩn cấp pit",
+          "Kiểm tra công tắc giới hạn hành trình pit",
+          "Kiểm tra công tắc căng cáp governor",
+          "Kiểm tra buffer cabin và đối trọng",
+          "Kiểm tra công tắc buffer (nếu có)",
+          "Kiểm tra thang xuống hố pit và đèn chiếu sáng hố pit",
+          "Kiểm tra giày dẫn hướng dưới cabin / đối trọng",
+          "Kiểm tra hệ thống chống thấm / bơm thoát nước hố pit",
+          "Kiểm tra cọc tiếp địa / dây nối đất và khoảng cách an toàn đáy hố pit"
+        ]
+      },
+      {
+        id: "van-hanh-an-toan",
+        title: "5. Vận hành và an toàn",
+        items: [
+          "Kiểm tra vận hành chạy tự động qua tất cả các tầng",
+          "Kiểm tra chạy kiểm tra (Inspection mode) từ nóc cabin",
+          "Kiểm tra hoạt động của bộ khống chế vượt tốc (Governor) và cơ cấu thắng cơ (Safety gear)",
+          "Kiểm tra chế độ cứu hộ khi mất điện lưới (ARD đưa cabin về tầng gần nhất & mở cửa)",
+          "Kiểm tra chế độ cứu hộ bằng tay (nhả phanh + quay tay quay, xác định vị trí cabin)",
+          "Kiểm tra thiết bị báo quá tải (overload) và đầy tải",
+          "Kiểm tra chế độ chạy ưu tiên / cứu hỏa / PCCC (nếu có)",
+          "Kiểm tra chế độ khóa tầng / tách tầng / VIP (nếu có)",
+          "Kiểm tra chuông báo động, đèn khẩn cấp và tín hiệu gọi cứu hộ",
+          "Kiểm tra dòng điện, điện áp và độ cân bằng pha khi vận hành",
+          "Kiểm tra tổng thể độ an toàn và tính sẵn sàng đưa vào sử dụng",
+          "Bàn giao kết quả kiểm tra và thống nhất phương án xử lý tồn tại"
+        ]
+      }
+    ];
+
+    function createEmptyChecklistState() {
+      const state = {};
+      CHECKLIST_GROUPS.forEach((grp) => {
+        state[grp.id] = grp.items.map((_, iIdx) => ({
+          id: `${grp.id}-${iIdx}`,
+          status: ""
+        }));
+      });
+      return state;
+    }
+
+    function normalizeChecklistState(raw) {
+      const base = createEmptyChecklistState();
+      if (!raw || typeof raw !== "object") return base;
+
+      CHECKLIST_GROUPS.forEach((grp) => {
+        const groupData = raw[grp.id];
+        if (!Array.isArray(groupData)) return;
+        base[grp.id].forEach((entry, idx) => {
+          const found = groupData[idx];
+          if (found && typeof found === "object" && STATUS_OPTIONS.includes(found.status)) {
+            entry.status = found.status;
+          } else if (typeof found === "string" && STATUS_OPTIONS.includes(found)) {
+            entry.status = found;
+          }
+        });
+      });
+
+      return base;
+    }
+
+    function computeChecklistSummary(state) {
+      let total = 0;
+      let evaluated = 0;
+      const perGroup = CHECKLIST_GROUPS.map((grp) => {
+        const arr = Array.isArray(state?.[grp.id]) ? state[grp.id] : [];
+        const gTotal = grp.items.length;
+        const gDone = arr.filter(x => STATUS_OPTIONS.includes(x?.status)).length;
+        const gPct = gTotal > 0 ? Math.round((gDone / gTotal) * 100) : 0;
+        total += gTotal;
+        evaluated += gDone;
+        return { id: grp.id, title: grp.title, done: gDone, total: gTotal, pct: gPct };
+      });
+      const overallPct = total > 0 ? Math.round((evaluated / total) * 100) : 0;
+      return { total, evaluated, overallPct, perGroup };
+    }
+
+    window.formChecklistData = createEmptyChecklistState();
+    window.formExpandedGroups = {};
+
+    window.modalChecklistData = createEmptyChecklistState();
+    window.modalExpandedGroups = {};
+
+    const lastOptionTapMap = new Map();
+
+    // Mở lên bắt buộc đèn TẮT
+    document.body.classList.remove("lamp-on");
+
+    const loginEmailInput = document.getElementById("loginEmail");
+    const loginPasswordInput = document.getElementById("loginPassword");
+
+    function setLampState(on) {
+      document.body.classList.toggle("lamp-on", Boolean(on));
+      if (!on) {
+        loginEmailInput?.blur();
+        loginPasswordInput?.blur();
+      }
+    }
+
+    function toggleLamp() {
+      setLampState(!document.body.classList.contains("lamp-on"));
+    }
+
+    document.getElementById("lampHead")?.addEventListener("click", toggleLamp);
+    document.getElementById("pullCordBtn")?.addEventListener("click", toggleLamp);
+    document.getElementById("turnOffLampBtn")?.addEventListener("click", () => setLampState(false));
+
+    window.formatCreatedDate = function(isoStr) {
+      if (!isoStr) return "Không rõ";
+      const d = new Date(isoStr);
+      if (Number.isNaN(d.getTime())) return String(isoStr);
+      return d.toLocaleString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    };
+
+    window.escapeHtml = function(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    };
+
+    function applyChecklistUpdate(target, groupId, itemIdx, newStatus) {
+      if (target === "modal") {
+        if (window.modalChecklistData[groupId]?.[itemIdx]) {
+          window.modalChecklistData[groupId][itemIdx].status = newStatus;
+        }
+        window.renderModalChecklistSection();
+        if (typeof window.persistModalChecklist === "function") {
+          window.persistModalChecklist(window.modalChecklistData);
+        }
+      } else {
+        if (window.formChecklistData[groupId]?.[itemIdx]) {
+          window.formChecklistData[groupId][itemIdx].status = newStatus;
+        }
+        window.renderFormChecklistSection();
+      }
+    }
+
+    window.handleChecklistDoubleTap = function(target, groupId, itemIdx, optVal) {
+      const stateObj = target === "modal" ? window.modalChecklistData : window.formChecklistData;
+      const currentStatus = stateObj?.[groupId]?.[itemIdx]?.status || "";
+      if (currentStatus === optVal) {
+        applyChecklistUpdate(target, groupId, itemIdx, "");
+      }
+    };
+
+    window.handleChecklistOptionClick = function(target, groupId, itemIdx, optVal) {
+      const key = `${target}:${groupId}:${itemIdx}:${optVal}`;
+      const now = Date.now();
+      const prevTime = lastOptionTapMap.get(key) || 0;
+      lastOptionTapMap.set(key, now);
+
+      const stateObj = target === "modal" ? window.modalChecklistData : window.formChecklistData;
+      const currentStatus = stateObj?.[groupId]?.[itemIdx]?.status || "";
+
+      if (now - prevTime <= 400 && currentStatus === optVal) {
+        lastOptionTapMap.delete(key);
+        applyChecklistUpdate(target, groupId, itemIdx, "");
+      }
+    };
+
+    window.onChecklistStatusChange = function(target, groupId, itemIdx, statusVal) {
+      applyChecklistUpdate(target, groupId, itemIdx, statusVal);
+    };
+
+    function buildChecklistHtml(target, stateObj, expandedObj) {
+      const summary = computeChecklistSummary(stateObj);
+      const isForm = target === "form";
+
+      const groupsHtml = CHECKLIST_GROUPS.map((grp, gIdx) => {
+        const gStat = summary.perGroup[gIdx];
+        const isOpen = Boolean(expandedObj[grp.id]);
+        const itemsHtml = grp.items.map((label, iIdx) => {
+          const currentStatus = stateObj[grp.id]?.[iIdx]?.status || "";
+          const radioName = `${target}_${grp.id}_${iIdx}`;
+
+          const radios = STATUS_OPTIONS.map((opt) => {
+            const isChecked = currentStatus === opt;
+            const checkedAttr = isChecked ? "checked" : "";
+            return `
+              <label
+                ondblclick="window.handleChecklistDoubleTap('${target}', '${grp.id}', ${iIdx}, '${opt}')"
+                onclick="window.handleChecklistOptionClick('${target}', '${grp.id}', ${iIdx}, '${opt}')"
+                title="Nhấn 2 lần để bỏ tích"
+                class="inline-flex items-center gap-2 text-sm ${isChecked ? "text-sky-300 font-semibold" : "text-slate-200"} cursor-pointer select-none pr-2"
+              >
+                <input
+                  type="radio"
+                  name="${radioName}"
+                  value="${opt}"
+                  ${checkedAttr}
+                  onchange="window.onChecklistStatusChange('${target}', '${grp.id}', ${iIdx}, '${opt}')"
+                  class="status-radio"
+                >
+                <span>${opt}</span>
+              </label>
+            `;
+          }).join("");
+
+          return `
+            <div class="py-3 border-t border-slate-800/90 first:border-t-0">
+              <div class="text-sm font-medium text-slate-100 mb-2">${window.escapeHtml(label)}</div>
+              <div class="flex flex-wrap items-center gap-4 sm:gap-5">${radios}</div>
+            </div>
+          `;
+        }).join("");
+
+        return `
+          <div class="bg-slate-900/95 border border-slate-800 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onclick="window.toggleChecklistGroup('${target}', '${grp.id}')"
+              class="w-full px-4 py-3.5 flex items-center justify-between gap-3 text-left hover:bg-slate-800/50 transition cursor-pointer"
+            >
+              <div>
+                <div class="text-sm sm:text-base font-bold text-white">${window.escapeHtml(grp.title)}</div>
+                <div class="text-xs text-slate-400 mt-0.5">${gStat.done}/${gStat.total} đã đánh giá</div>
+              </div>
+              <div class="flex items-center gap-2.5 shrink-0">
+                <span class="px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200">${gStat.pct}%</span>
+                <span class="text-slate-400 text-sm font-bold">${isOpen ? "∧" : "∨"}</span>
+              </div>
+            </button>
+            <div class="${isOpen ? "block" : "hidden"} px-4 pb-3 bg-slate-950/60">
+              ${itemsHtml}
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      return `
+        <div class="space-y-3.5">
+          <div class="flex items-center justify-between gap-2">
+            <h4 class="text-base sm:text-lg font-bold text-white">Checklist thực hiện</h4>
+            <span class="px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 whitespace-nowrap">
+              ${summary.evaluated}/${summary.total} hạng mục
+            </span>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm text-slate-300 font-medium">
+            <span>Tiến độ đánh dấu: <span class="text-teal-300 font-bold">${summary.overallPct}%</span></span>
+            <span class="text-[11px] text-slate-500">Mẹo: Nhấn 2 lần vào ô đã chọn để bỏ tích</span>
+          </div>
+
+          <div class="space-y-2.5">
+            ${groupsHtml}
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 pt-1">
+            <button
+              type="button"
+              onclick="window.setAllChecklistGroups('${target}', true)"
+              class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs sm:text-sm font-medium text-slate-200 transition cursor-pointer"
+            >
+              Mở tất cả
+            </button>
+            <button
+              type="button"
+              onclick="window.setAllChecklistGroups('${target}', false)"
+              class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs sm:text-sm font-medium text-slate-200 transition cursor-pointer"
+            >
+              Thu gọn
+            </button>
+            <button
+              type="button"
+              onclick="window.resetChecklistTarget('${target}')"
+              class="px-3.5 py-2 rounded-xl bg-red-950/50 hover:bg-red-900/50 border border-red-500/40 text-xs sm:text-sm font-semibold text-red-300 transition cursor-pointer"
+            >
+              Làm lại
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onclick="window.copyChecklistResult('${target}')"
+            class="w-full py-3 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-sm flex items-center justify-center gap-2 shadow transition cursor-pointer"
+          >
+            <span>📋</span>
+            <span>Sao chép kết quả checklist</span>
+          </button>
+          ${!isForm ? `<p class="text-[11px] text-slate-500 text-center">Mọi thay đổi đánh giá trong cửa sổ này sẽ tự lưu lên hệ thống.</p>` : ""}
+        </div>
+      `;
+    }
+
+    window.renderFormChecklistSection = function() {
+      const box = document.getElementById("formChecklistSection");
+      if (!box) return;
+      box.innerHTML = buildChecklistHtml("form", window.formChecklistData, window.formExpandedGroups);
+    };
+
+    window.renderModalChecklistSection = function() {
+      const box = document.getElementById("modalChecklistSection");
+      if (!box) return;
+      box.innerHTML = buildChecklistHtml("modal", window.modalChecklistData, window.modalExpandedGroups);
+    };
+
+    window.toggleChecklistGroup = function(target, groupId) {
+      const exp = target === "modal" ? window.modalExpandedGroups : window.formExpandedGroups;
+      exp[groupId] = !exp[groupId];
+      if (target === "modal") window.renderModalChecklistSection();
+      else window.renderFormChecklistSection();
+    };
+
+    window.setAllChecklistGroups = function(target, open) {
+      const exp = target === "modal" ? window.modalExpandedGroups : window.formExpandedGroups;
+      CHECKLIST_GROUPS.forEach((grp) => {
+        exp[grp.id] = Boolean(open);
+      });
+      if (target === "modal") window.renderModalChecklistSection();
+      else window.renderFormChecklistSection();
+    };
+
+    window.resetChecklistTarget = function(target) {
+      if (!confirm("Làm lại toàn bộ đánh giá checklist của phần này?")) return;
+      if (target === "modal") {
+        window.modalChecklistData = createEmptyChecklistState();
+        window.renderModalChecklistSection();
+        if (typeof window.persistModalChecklist === "function") {
+          window.persistModalChecklist(window.modalChecklistData);
+        }
+      } else {
+        window.formChecklistData = createEmptyChecklistState();
+        window.renderFormChecklistSection();
+      }
+    };
+
+    window.copyChecklistResult = async function(target) {
+      const stateObj = target === "modal" ? window.modalChecklistData : window.formChecklistData;
+      const summary = computeChecklistSummary(stateObj);
+      const lines = [
+        `CHECKLIST THỰC HIỆN (${summary.evaluated}/${summary.total} hạng mục - Tiến độ: ${summary.overallPct}%)`
+      ];
+
+      CHECKLIST_GROUPS.forEach((grp, gIdx) => {
+        const gStat = summary.perGroup[gIdx];
+        lines.push(`\n${grp.title} (${gStat.done}/${gStat.total} - ${gStat.pct}%)`);
+        grp.items.forEach((label, iIdx) => {
+          const st = stateObj[grp.id]?.[iIdx]?.status || "Chưa đánh giá";
+          lines.push(`  • ${label}: ${st}`);
+        });
+      });
+
+      const textToCopy = lines.join("\n");
+      try {
+        await navigator.clipboard.writeText(textToCopy);
+        alert("Đã sao chép kết quả checklist vào bộ nhớ tạm!");
+      } catch (_) {
+        const temp = document.createElement("textarea");
+        temp.value = textToCopy;
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand("copy");
+        document.body.removeChild(temp);
+        alert("Đã sao chép kết quả checklist!");
+      }
+    };
+
+    window.renderFormChecklistSection();
+
+    // Quản lý gợi ý & tự chuyển thông tin công trình (trừ ghi chú)
+    window.getSavedProjectsMeta = function() {
+      try {
+        const list = JSON.parse(localStorage.getItem(PROJECT_HISTORY_KEY) || "[]");
+        return Array.isArray(list) ? list : [];
+      } catch (_) {
+        return [];
+      }
+    };
+
+    function normalizeRecordToMeta(rec) {
+      const types = Array.isArray(rec.elevatorTypes) && rec.elevatorTypes.length
+        ? rec.elevatorTypes
+        : (rec.elevatorGroup ? String(rec.elevatorGroup).split(",").map(s => s.trim()).filter(Boolean) : []);
+
+      return {
+        name: (rec.name || "").trim(),
+        address: (rec.address || "").trim(),
+        controller: (rec.controller || "").trim(),
+        elevatorTypes: types,
+        specs: (rec.specs || "").trim(),
+        nextMaint: (rec.nextMaint || "").trim(),
+        inspExpiry: (rec.inspExpiry || "").trim(),
+        updatedAt: Date.now()
+      };
+    }
+
+    window.saveProjectToHistory = function(record) {
+      if (!record || !record.name) return;
+      const cleanName = record.name.trim();
+      if (!cleanName) return;
+
+      const meta = normalizeRecordToMeta(record);
+      const current = window.getSavedProjectsMeta();
+      const filtered = current.filter(item => item.name.toLowerCase() !== cleanName.toLowerCase());
+      filtered.unshift(meta);
+      localStorage.setItem(PROJECT_HISTORY_KEY, JSON.stringify(filtered.slice(0, 50)));
+    };
+
+    window.syncProjectsFromRecords = function(records) {
+      if (!Array.isArray(records) || !records.length) return;
+      const current = window.getSavedProjectsMeta();
+      const mapByName = new Map();
+
+      [...records].reverse().forEach(rec => {
+        if (!rec?.name) return;
+        const key = rec.name.trim().toLowerCase();
+        mapByName.set(key, normalizeRecordToMeta(rec));
+      });
+
+      current.forEach(item => {
+        if (!item?.name) return;
+        const key = item.name.trim().toLowerCase();
+        if (!mapByName.has(key)) {
+          mapByName.set(key, normalizeRecordToMeta(item));
+        }
+      });
+
+      const merged = Array.from(mapByName.values()).slice(0, 50);
+      localStorage.setItem(PROJECT_HISTORY_KEY, JSON.stringify(merged));
+    };
+
+    function applyControllerToForm(controllerVal) {
+      const selectEl = document.getElementById("projControllerSelect");
+      const customEl = document.getElementById("projControllerCustom");
+      if (!selectEl || !customEl || !controllerVal) return;
+
+      const options = Array.from(selectEl.options).map(o => o.value);
+      if (options.includes(controllerVal) && controllerVal !== "CUSTOM") {
+        selectEl.value = controllerVal;
+        customEl.classList.add("hidden");
+        customEl.value = "";
+      } else {
+        selectEl.value = "CUSTOM";
+        customEl.classList.remove("hidden");
+        customEl.value = controllerVal;
+      }
+    }
+
+    function applyElevatorTypesToForm(typesList) {
+      const list = Array.isArray(typesList) ? typesList : [];
+      const checkboxes = Array.from(document.querySelectorAll('input[name="elevatorType"]'));
+      const otherInput = document.getElementById("projTypeOther");
+
+      checkboxes.forEach(cb => {
+        cb.checked = list.includes(cb.value);
+      });
+
+      const customTypes = list.filter(t => !KNOWN_ELEVATOR_TYPES.includes(t));
+      if (otherInput) {
+        otherInput.value = customTypes.join(", ");
+      }
+    }
+
+    window.selectProjectSuggestion = function(encodedName) {
+      const name = decodeURIComponent(encodedName);
+      const nameInput = document.getElementById("projName");
+      const addrInput = document.getElementById("projAddress");
+      const specsInput = document.getElementById("projSpecs");
+      const nextMaintInput = document.getElementById("nextMaintenanceDate");
+      const inspExpiryInput = document.getElementById("inspectionExpiryDate");
+      const box = document.getElementById("projNameSuggestions");
+
+      if (nameInput) nameInput.value = name;
+
+      const meta = window.getSavedProjectsMeta().find(
+        item => item.name.toLowerCase() === name.toLowerCase()
+      );
+
+      if (meta) {
+        if (addrInput) addrInput.value = meta.address || "";
+        applyControllerToForm(meta.controller || "STEP AS380 / AS380S");
+        applyElevatorTypesToForm(meta.elevatorTypes || []);
+        if (specsInput) specsInput.value = meta.specs || "";
+        if (nextMaintInput) nextMaintInput.value = meta.nextMaint || "";
+        if (inspExpiryInput) inspExpiryInput.value = meta.inspExpiry || "";
+      }
+
+      box?.classList.add("hidden");
+    };
+
+    window.showProjectSuggestions = function() {
+      const input = document.getElementById("projName");
+      const box = document.getElementById("projNameSuggestions");
+      if (!input || !box) return;
+
+      const keyword = input.value.trim().toLowerCase();
+      const all = window.getSavedProjectsMeta();
+      const matches = keyword
+        ? all.filter(item =>
+            item.name.toLowerCase().includes(keyword) ||
+            (item.address && item.address.toLowerCase().includes(keyword)) ||
+            (item.controller && item.controller.toLowerCase().includes(keyword))
+          )
+        : all;
+
+      if (!matches.length) {
+        box.classList.add("hidden");
+        return;
+      }
+
+      box.innerHTML = matches.slice(0, 8).map(item => {
+        const subParts = [
+          item.address,
+          item.controller,
+          Array.isArray(item.elevatorTypes) && item.elevatorTypes.length ? item.elevatorTypes.join(", ") : "",
+          item.specs
+        ].filter(Boolean);
+
+        return `
+          <button
+            type="button"
+            onmousedown="event.preventDefault(); window.selectProjectSuggestion('${encodeURIComponent(item.name)}')"
+            class="w-full text-left px-3.5 py-2.5 hover:bg-teal-500/15 transition flex flex-col cursor-pointer"
+          >
+            <span class="text-xs font-semibold text-white">${window.escapeHtml(item.name)}</span>
+            ${subParts.length ? `<span class="text-[11px] text-slate-400 truncate">${window.escapeHtml(subParts.join(" • "))}</span>` : ""}
+          </button>
+        `;
+      }).join("");
+
+      box.classList.remove("hidden");
+    };
+
+    document.addEventListener("click", (e) => {
+      const wrapper = document.getElementById("projNameWrapper");
+      const box = document.getElementById("projNameSuggestions");
+      if (wrapper && box && !wrapper.contains(e.target)) {
+        box.classList.add("hidden");
+      }
+    });
+
+    window.initBulletOnFocus = function(textarea) {
+      if (!textarea.value.trim()) {
+        textarea.value = "• ";
+      }
+    };
+
+    window.handleBulletEnter = function(e, textarea) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const val = textarea.value;
+        const insert = "\n• ";
+        textarea.value = val.slice(0, start) + insert + val.slice(end);
+        const nextPos = start + insert.length;
+        textarea.selectionStart = textarea.selectionEnd = nextPos;
+      }
+    };
+
+    window.addBulletLine = function() {
+      const textarea = document.getElementById("projNote");
+      if (!textarea) return;
+      if (!textarea.value.trim()) {
+        textarea.value = "• ";
+      } else {
+        const needsNewline = !textarea.value.endsWith("\n");
+        textarea.value += (needsNewline ? "\n" : "") + "• ";
+      }
+      textarea.focus();
+    };
+
+    window.formatBulletsText = function(rawText) {
+      if (!rawText || !rawText.trim()) return [];
+      return rawText
+        .split(/\r?\n/)
+        .map(line => line.replace(/^\s*(?:•|-|\*)\s*/, "").trim())
+        .filter(Boolean);
+    };
+
+    // Hạt bụi bay lơ lửng quanh ánh đèn
+    const canvas = document.getElementById("dustCanvas");
+    const ctx = canvas.getContext("2d");
+    let particles = [];
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    for (let i = 0; i < 36; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: Math.random() * 2 + 0.6,
+        vx: (Math.random() - 0.5) * 0.35,
+        vy: (Math.random() - 0.5) * 0.35,
+        a: Math.random() * 0.5 + 0.15
+      });
+    }
+
+    function animateDust() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const lampIsOn = document.body.classList.contains("lamp-on");
+      for (const p of particles) {
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0) p.x = canvas.width;
+        if (p.x > canvas.width) p.x = 0;
+        if (p.y < 0) p.y = canvas.height;
+        if (p.y > canvas.height) p.y = 0;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = lampIsOn
+          ? `rgba(94, 234, 212, ${p.a})`
+          : `rgba(148, 163, 184, ${p.a * 0.2})`;
+        ctx.fill();
+      }
+      requestAnimationFrame(animateDust);
+    }
+    animateDust();
+  </script>
+
+  <!-- SCRIPT XỬ LÝ FIREBASE: ĐĂNG KÝ EMAIL + MÃ XÁC NHẬN + CHỦ CHÍNH DUYỆT / XÓA & QUẢN LÝ THANG MÁY -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import {
+      getAuth,
+      createUserWithEmailAndPassword,
+      signInWithEmailAndPassword,
+      signOut,
+      onAuthStateChanged,
+      updateProfile,
+      sendEmailVerification,
+      sendPasswordResetEmail
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      getDocs,
+      deleteDoc,
+      doc,
+      updateDoc,
+      setDoc,
+      getDoc
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBwToi_DY1Phzj0h6YVK6xGwMyUMoVirHk",
+      authDomain: "elevator-88205.firebaseapp.com",
+      projectId: "elevator-88205",
+      storageBucket: "elevator-88205.appspot.com",
+      messagingSenderId: "1027347351613",
+      appId: "1:1027347351613:web:400022f2383a3ff7218254"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let elevatorsCache = [];
+    let registeredUsersCache = [];
+    let currentUser = null;
+    let activeModalIndex = null;
+    let isRegisteringFlow = false;
+
+    const MASTER_EMAIL = "hoangnamanel97@gmail.com";
+
+    let pendingEmailOtp = {
+      email: "",
+      code: "",
+      expiresAt: 0
+    };
+
+    function isValidEmail(val) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(val || "").trim());
+    }
+
+    function isMasterAccount(user, profileData) {
+      const email = (user?.email || profileData?.email || "").toLowerCase();
+      return email === MASTER_EMAIL;
+    }
+
+    window.sendRegistrationOtp = async function() {
+      const rawEmail = document.getElementById("regEmail").value.trim().toLowerCase();
+      const hintEl = document.getElementById("otpHintText");
+      const btn = document.getElementById("sendOtpBtn");
+
+      if (!isValidEmail(rawEmail)) {
+        return alert("Vui lòng nhập đúng định dạng Email!");
+      }
+
+      btn.disabled = true;
+      btn.innerText = "Đang gửi...";
+
+      try {
+        const generatedCode = String(Math.floor(100000 + Math.random() * 900000));
+        await setDoc(doc(db, "otp_requests", rawEmail), {
+          email: rawEmail,
+          code: generatedCode,
+          createdAt: new Date().toISOString(),
+          expiresAt: Date.now() + 10 * 60 * 1000
+        });
+
+        pendingEmailOtp = {
+          email: rawEmail,
+          code: generatedCode,
+          expiresAt: Date.now() + 10 * 60 * 1000
+        };
+
+        hintEl.innerHTML = `<span class="text-teal-300 font-semibold">Mã xác nhận cho ${window.escapeHtml(rawEmail)}: <u class="text-amber-300">${generatedCode}</u> (hiệu lực 10 phút).</span>`;
+        alert(`Mã xác nhận của ${rawEmail} là: ${generatedCode}\n(Sau khi bấm xác nhận, hệ thống cũng gửi email xác thực chính thức).`);
+      } catch (err) {
+        console.error("Lỗi tạo mã xác nhận:", err);
+        alert("Không thể tạo mã xác nhận: " + (err.message || "Lỗi kết nối Firestore"));
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Gửi lại mã";
+      }
+    };
+
+    function getSelectedElevatorTypes() {
+      const checked = Array.from(document.querySelectorAll('input[name="elevatorType"]:checked')).map(el => el.value.trim());
+      const other = document.getElementById("projTypeOther")?.value.trim();
+      if (other) {
+        other.split(",").map(s => s.trim()).filter(Boolean).forEach(t => {
+          if (!checked.includes(t)) checked.push(t);
+        });
+      }
+      return checked;
+    }
+
+    function clearSelectedElevatorTypes() {
+      document.querySelectorAll('input[name="elevatorType"]').forEach(el => { el.checked = false; });
+      const otherInput = document.getElementById("projTypeOther");
+      if (otherInput) otherInput.value = "";
+    }
+
+    window.switchTab = function(tab) {
+      const loginForm = document.getElementById("loginForm");
+      const registerForm = document.getElementById("registerForm");
+      const loginBtn = document.getElementById("tabLoginBtn");
+      const regBtn = document.getElementById("tabRegisterBtn");
+
+      if (tab === "login") {
+        loginForm.classList.remove("hidden");
+        registerForm.classList.add("hidden");
+        loginBtn.className = "flex-1 pb-3 text-sm font-bold text-teal-400 border-b-2 border-teal-400 transition cursor-pointer whitespace-nowrap";
+        regBtn.className = "flex-1 pb-3 text-sm font-semibold text-slate-400 hover:text-white transition cursor-pointer whitespace-nowrap";
+      } else {
+        loginForm.classList.add("hidden");
+        registerForm.classList.remove("hidden");
+        regBtn.className = "flex-1 pb-3 text-sm font-bold text-emerald-400 border-b-2 border-emerald-500 transition cursor-pointer whitespace-nowrap";
+        loginBtn.className = "flex-1 pb-3 text-sm font-semibold text-slate-400 hover:text-white transition cursor-pointer whitespace-nowrap";
+      }
+    };
+
+    window.handleRegister = async function() {
+      const name = document.getElementById("regName").value.trim();
+      const email = document.getElementById("regEmail").value.trim().toLowerCase();
+      const otpCode = document.getElementById("regOtpCode").value.trim();
+      const password = document.getElementById("regPassword").value.trim();
+
+      if (!name || !isValidEmail(email) || password.length < 6) {
+        return alert("Vui lòng điền đầy đủ Họ tên, Email hợp lệ và Mật khẩu từ 6 ký tự trở lên!");
+      }
+      if (!otpCode || otpCode.length !== 6) {
+        return alert("Vui lòng nhập đủ 6 số mã xác nhận!");
+      }
+      if (!pendingEmailOtp.email || pendingEmailOtp.email !== email) {
+        return alert('Vui lòng bấm "Gửi mã xác nhận" cho Email này trước!');
+      }
+      if (Date.now() > pendingEmailOtp.expiresAt) {
+        return alert("Mã xác nhận đã hết hạn, vui lòng bấm Gửi lại mã!");
+      }
+      if (otpCode !== pendingEmailOtp.code) {
+        return alert("Mã xác nhận chưa chính xác! Vui lòng kiểm tra lại 6 số.");
+      }
+
+      isRegisteringFlow = true;
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(userCredential.user, { displayName: name });
+        try {
+          await sendEmailVerification(userCredential.user);
+        } catch (_) {}
+
+        const isMaster = email === MASTER_EMAIL;
+
+        await setDoc(doc(db, "users", userCredential.user.uid), {
+          uid: userCredential.user.uid,
+          name,
+          email,
+          role: isMaster ? "master" : "technician",
+          status: isMaster ? "approved" : "pending",
+          otpVerified: true,
+          createdAt: new Date().toISOString()
+        });
+
+        if (!isMaster) {
+          await signOut(auth);
+          alert(
+            `Xác nhận mã thành công cho ${email}!\n` +
+            `Tài khoản của bạn đã được gửi tới Chủ chính (Võ Văn Hoàng) để duyệt trước khi đăng nhập.`
+          );
+        } else {
+          alert("Đăng ký & xác thực tài khoản Chủ chính thành công!");
+        }
+
+        document.getElementById("regName").value = "";
+        document.getElementById("regEmail").value = "";
+        document.getElementById("regOtpCode").value = "";
+        document.getElementById("regPassword").value = "";
+        pendingEmailOtp = { email: "", code: "", expiresAt: 0 };
+        switchTab("login");
+      } catch (error) {
+        alert("Lỗi đăng ký: " + error.message);
+      } finally {
+        isRegisteringFlow = false;
+      }
+    };
+
+    window.handleLogin = async function() {
+      const email = document.getElementById("loginEmail").value.trim().toLowerCase();
+      const password = document.getElementById("loginPassword").value.trim();
+
+      if (!email || !password) {
+        return alert("Vui lòng nhập đầy đủ Email và Mật khẩu!");
+      }
+
+      try {
+        const cred = await signInWithEmailAndPassword(auth, email, password);
+        const userSnap = await getDoc(doc(db, "users", cred.user.uid));
+        const profile = userSnap.exists() ? userSnap.data() : null;
+        const isMaster = isMasterAccount(cred.user, profile);
+
+        if (!isMaster) {
+          if (!profile || profile.status === "pending") {
+            await signOut(auth);
+            return alert("Tài khoản của bạn ĐANG CHỜ Chủ chính (Võ Văn Hoàng) duyệt quyền truy cập!");
+          }
+          if (profile.status === "rejected") {
+            await signOut(auth);
+            return alert("Tài khoản của bạn đã bị khóa hoặc từ chối quyền truy cập.");
+          }
+        }
+      } catch (error) {
+        alert("Đăng nhập thất bại: Sai email hoặc mật khẩu.");
+      }
+    };
+
+    window.handleForgotPassword = async function() {
+      const email = document.getElementById("loginEmail").value.trim().toLowerCase();
+      if (!email) {
+        return alert('Vui lòng nhập email đăng nhập vào ô "Email đăng nhập" ở trên trước khi bấm Quên mật khẩu!');
+      }
+
+      try {
+        await sendPasswordResetEmail(auth, email);
+        alert("Đã gửi link đặt lại mật khẩu đến email: " + email + ". Vui lòng kiểm tra hộp thư!");
+      } catch (error) {
+        alert("Lỗi gửi yêu cầu: Không tìm thấy tài khoản với email này.");
+      }
+    };
+
+    window.logout = async function() {
+      await signOut(auth);
+      document.body.classList.remove("lamp-on");
+    };
+
+    onAuthStateChanged(auth, async (user) => {
+      if (isRegisteringFlow) return;
+
+      if (user) {
+        try {
+          const userSnap = await getDoc(doc(db, "users", user.uid));
+          const profile = userSnap.exists() ? userSnap.data() : null;
+          const isMaster = isMasterAccount(user, profile);
+
+          if (isMaster && !profile) {
+            await setDoc(doc(db, "users", user.uid), {
+              uid: user.uid,
+              name: user.displayName || "Võ Văn Hoàng",
+              email: user.email || MASTER_EMAIL,
+              role: "master",
+              status: "approved",
+              otpVerified: true,
+              createdAt: new Date().toISOString()
+            });
+          }
+
+          if (!isMaster && (!profile || profile.status !== "approved")) {
+            await signOut(auth);
+            return;
+          }
+
+          currentUser = user;
+          document.getElementById("authScreen").classList.add("hidden");
+          document.getElementById("appScreen").classList.remove("hidden");
+          document.getElementById("userNavInfo").classList.remove("hidden");
+          window.renderFormChecklistSection();
+
+          const displayName = profile?.name || user.displayName || user.email;
+          document.getElementById("navUsername").innerText = displayName;
+          document.getElementById("navRole").innerText = isMaster ? "👑 Chủ chính (Super Admin)" : "🛠️ Kỹ thuật viên / Thợ";
+
+          const adminSection = document.getElementById("adminApprovalSection");
+          if (isMaster) {
+            adminSection.classList.remove("hidden");
+            loadRegisteredUsers();
+          } else {
+            adminSection.classList.add("hidden");
+          }
+
+          loadElevators();
+        } catch (err) {
+          console.error("Lỗi kiểm tra quyền:", err);
+        }
+      } else {
+        currentUser = null;
+        document.getElementById("appScreen").classList.add("hidden");
+        document.getElementById("userNavInfo").classList.add("hidden");
+        document.getElementById("adminApprovalSection").classList.add("hidden");
+        document.getElementById("authScreen").classList.remove("hidden");
+      }
+    });
+
+    window.loadRegisteredUsers = async function() {
+      const tbody = document.getElementById("registeredUsersTableBody");
+      const badge = document.getElementById("pendingUsersBadge");
+      if (!tbody) return;
+
+      tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500">Đang tải danh sách tài khoản...</td></tr>`;
+      try {
+        const snap = await getDocs(collection(db, "users"));
+        const list = [];
+        snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
+
+        list.sort((a, b) => {
+          const order = { pending: 0, approved: 1, rejected: 2 };
+          const oa = order[a.status] ?? 9;
+          const ob = order[b.status] ?? 9;
+          if (oa !== ob) return oa - ob;
+          const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return tb - ta;
+        });
+
+        registeredUsersCache = list;
+        const pendingCount = list.filter(u => u.status === "pending").length;
+        if (badge) badge.innerText = `${pendingCount} chờ duyệt`;
+
+        if (!list.length) {
+          tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500">Chưa có tài khoản đăng ký nào.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = list.map((u) => {
+          const isMasterRow = u.role === "master" || (u.email || "").toLowerCase() === MASTER_EMAIL;
+          let statusBadge = "";
+          if (isMasterRow) {
+            statusBadge = `<span class="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-400/30 text-[11px] font-semibold">👑 Chủ chính</span>`;
+          } else if (u.status === "approved") {
+            statusBadge = `<span class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[11px] font-semibold">✅ Đã duyệt</span>`;
+          } else if (u.status === "rejected") {
+            statusBadge = `<span class="px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-400/30 text-[11px] font-semibold">⛔ Đã khóa</span>`;
+          } else {
+            statusBadge = `<span class="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 text-[11px] font-semibold">⏳ Chờ duyệt</span>`;
+          }
+
+          const safeId = window.escapeHtml(u.id);
+          const safeEmail = window.escapeHtml(u.email || "N/A");
+          const actions = isMasterRow
+            ? `<span class="text-xs text-slate-500 italic">Tài khoản gốc</span>`
+            : `
+              <div class="inline-flex items-center gap-1.5 flex-wrap justify-center">
+                ${u.status !== "approved" ? `<button type="button" onclick="window.updateUserApproval('${safeId}', 'approved')" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition cursor-pointer">Duyệt</button>` : ""}
+                ${u.status !== "rejected" ? `<button type="button" onclick="window.updateUserApproval('${safeId}', 'rejected')" class="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-600 text-amber-300 hover:text-white border border-amber-500/30 text-xs font-semibold transition cursor-pointer">Khóa</button>` : ""}
+                <button type="button" onclick="window.deleteRegisteredUser('${safeId}', '${safeEmail}')" class="px-2.5 py-1 rounded-lg bg-red-600/25 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/40 text-xs font-semibold transition cursor-pointer">Xóa</button>
+              </div>
+            `;
+
+          return `
+            <tr class="border-b border-slate-800/80 hover:bg-slate-800/40">
+              <td class="p-3 font-semibold text-white">${window.escapeHtml(u.name || "Chưa cập nhật")}</td>
+              <td class="p-3 text-teal-300">${safeEmail}</td>
+              <td class="p-3 text-slate-400 text-xs whitespace-nowrap">${window.escapeHtml(window.formatCreatedDate(u.createdAt))}</td>
+              <td class="p-3 whitespace-nowrap">${statusBadge}</td>
+              <td class="p-3 text-center whitespace-nowrap">${actions}</td>
+            </tr>
+          `;
+        }).join("");
+      } catch (e) {
+        console.error("Lỗi tải danh sách tài khoản:", e);
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-red-400">Không thể tải danh sách tài khoản.</td></tr>`;
+      }
+    };
+
+    window.updateUserApproval = async function(uid, newStatus) {
+      const label = newStatus === "approved" ? "DUYỆT cho tài khoản này truy cập hệ thống" : "KHÓA / TỪ CHỐI tài khoản này";
+      if (!confirm(`Mày có chắc muốn ${label} không?`)) return;
+
+      try {
+        await updateDoc(doc(db, "users", String(uid)), {
+          status: newStatus,
+          reviewedBy: currentUser?.email || MASTER_EMAIL,
+          reviewedAt: new Date().toISOString()
+        });
+        loadRegisteredUsers();
+      } catch (e) {
+        console.error("Lỗi cập nhật duyệt tài khoản:", e);
+        alert("Không thể cập nhật trạng thái tài khoản: " + (e.message || ""));
+      }
+    };
+
+    window.deleteRegisteredUser = async function(uid, emailLabel) {
+      const targetUser = registeredUsersCache.find(u => String(u.id) === String(uid));
+      const targetEmail = (targetUser?.email || emailLabel || "").toLowerCase();
+      if (!uid || targetEmail === MASTER_EMAIL || targetUser?.role === "master") {
+        return alert("Không thể xóa tài khoản Chủ chính!");
+      }
+      if (!confirm(`Xóa vĩnh viễn người dùng "${targetEmail || uid}" khỏi danh sách hệ thống?`)) return;
+      if (!confirm("Xác nhận lần cuối: Hành động này xóa hồ sơ người dùng khỏi Firestore và không thể hoàn tác!")) return;
+
+      try {
+        await deleteDoc(doc(db, "users", String(uid)));
+        registeredUsersCache = registeredUsersCache.filter(u => String(u.id) !== String(uid));
+        alert("Đã xóa người dùng khỏi hệ thống!");
+        loadRegisteredUsers();
+      } catch (e) {
+        console.error("Lỗi xóa người dùng:", e);
+        alert("Không thể xóa người dùng: " + (e.code || e.message || "Lỗi không xác định"));
+      }
+    };
+
+    window.checkCustomController = function(selectElem) {
+      const customInput = document.getElementById("projControllerCustom");
+      if (selectElem.value === "CUSTOM") {
+        customInput.classList.remove("hidden");
+        customInput.focus();
+      } else {
+        customInput.classList.add("hidden");
+        customInput.value = "";
+      }
+    };
+
+    window.addElevator = async function() {
+      const name = document.getElementById("projName").value.trim();
+      const address = document.getElementById("projAddress").value.trim();
+      const selectedTypes = getSelectedElevatorTypes();
+      const elevatorTypesStr = selectedTypes.join(", ");
+
+      let controller = document.getElementById("projControllerSelect").value;
+      if (controller === "CUSTOM") {
+        controller = document.getElementById("projControllerCustom").value.trim();
+        if (!controller) return alert("Vui lòng nhập tên hãng thang máy tùy chỉnh!");
+      }
+
+      const specs = document.getElementById("projSpecs").value.trim();
+      const nextMaint = document.getElementById("nextMaintenanceDate").value;
+      const inspExpiry = document.getElementById("inspectionExpiryDate").value;
+
+      const checklistGroups = normalizeChecklistState(window.formChecklistData);
+      const checklistSummary = computeChecklistSummary(checklistGroups);
+
+      const bullets = window.formatBulletsText(document.getElementById("projNote").value);
+      const note = bullets.map(b => "• " + b).join("\n");
+
+      if (!name || !address) return alert("Vui lòng nhập tên công trình và địa chỉ!");
+
+      try {
+        await addDoc(collection(db, "elevators"), {
+          name,
+          address,
+          controller,
+          elevatorTypes: selectedTypes,
+          elevatorGroup: elevatorTypesStr,
+          specs,
+          nextMaint,
+          inspExpiry,
+          checklistGroups,
+          checklistSummary,
+          note,
+          createdBy: currentUser?.displayName || currentUser?.email || "N/A",
+          createdAt: new Date().toISOString()
+        });
+
+        window.saveProjectToHistory({
+          name,
+          address,
+          controller,
+          elevatorTypes: selectedTypes,
+          specs,
+          nextMaint,
+          inspExpiry
+        });
+
+        alert("Thêm hồ sơ thang máy thành công!");
+        document.getElementById("projName").value = "";
+        document.getElementById("projAddress").value = "";
+        clearSelectedElevatorTypes();
+        document.getElementById("projControllerSelect").value = "STEP AS380 / AS380S";
+        document.getElementById("projControllerCustom").classList.add("hidden");
+        document.getElementById("projControllerCustom").value = "";
+        document.getElementById("projSpecs").value = "";
+        document.getElementById("nextMaintenanceDate").value = "";
+        document.getElementById("inspectionExpiryDate").value = "";
+        document.getElementById("projNote").value = "";
+        window.formChecklistData = createEmptyChecklistState();
+        window.renderFormChecklistSection();
+        loadElevators();
+      } catch (e) {
+        console.error("Lỗi lưu hồ sơ: ", e);
+        alert("Không thể lưu lên database: " + (e.code || e.message || "Lỗi không xác định"));
+      }
+    };
+
+    function updateListFooterMeta() {
+      const countEl = document.getElementById("listCountSummary");
+      const latestEl = document.getElementById("listLatestCreatedAt");
+      if (!countEl || !latestEl) return;
+
+      countEl.innerText = `Tổng số hồ sơ: ${elevatorsCache.length}`;
+      if (!elevatorsCache.length) {
+        latestEl.innerText = "Ngày tạo gần nhất: --";
+        return;
+      }
+
+      const latestItem = elevatorsCache[0];
+      latestEl.innerText = `Ngày tạo gần nhất: ${window.formatCreatedDate(latestItem.createdAt)} (${latestItem.createdBy || "N/A"})`;
+    }
+
+    function renderElevatorRows() {
+      const tbody = document.getElementById("elevatorTableBody");
+      tbody.innerHTML = "";
+
+      if (!elevatorsCache.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">Chưa có hồ sơ thang máy nào.</td></tr>`;
+        updateListFooterMeta();
+        return;
+      }
+
+      elevatorsCache.forEach((data, index) => {
+        const typesList = Array.isArray(data.elevatorTypes) && data.elevatorTypes.length
+          ? data.elevatorTypes
+          : (data.elevatorGroup ? String(data.elevatorGroup).split(",").map(s => s.trim()).filter(Boolean) : []);
+
+        const typeBadges = typesList.length
+          ? `<div class="flex flex-wrap gap-1 mb-1">${typesList.map(t => `<span class="inline-block px-2 py-0.5 rounded bg-teal-500/15 text-teal-300 border border-teal-400/25 text-[11px] font-semibold">${window.escapeHtml(t)}</span>`).join("")}</div>`
+          : "";
+
+        const st = computeChecklistSummary(normalizeChecklistState(data.checklistGroups));
+        const checklistBadge = `<div class="mt-1 text-[11px] text-teal-300 font-medium">Checklist: ${st.evaluated}/${st.total} (${st.overallPct}%)</div>`;
+
+        const noteLines = window.formatBulletsText(data.note);
+        const notePreview = noteLines.length
+          ? `<div class="mt-1 space-y-0.5 text-[11px] text-slate-400">${noteLines.map(l => `<div>• ${window.escapeHtml(l)}</div>`).join("")}</div>`
+          : "";
+
+        tbody.innerHTML += `
+          <tr class="border-b border-slate-700/50 hover:bg-slate-700/20 align-top">
+            <td class="p-3">
+              <strong class="text-white block">${window.escapeHtml(data.name || "Chưa đặt tên")}</strong>
+              <span class="text-xs text-slate-400">${window.escapeHtml(data.address || "")}</span>
+              ${checklistBadge}
+              ${notePreview}
+            </td>
+            <td class="p-3 text-teal-400 font-medium">${window.escapeHtml(data.controller || "N/A")}</td>
+            <td class="p-3 text-slate-300 text-xs">
+              ${typeBadges}
+              <span>${window.escapeHtml(data.specs || "N/A")}</span>
+            </td>
+            <td class="p-3 text-slate-300 text-xs">${window.escapeHtml(data.nextMaint || "Chưa định lịch")}</td>
+            <td class="p-3 text-slate-300 text-xs">${window.escapeHtml(data.inspExpiry || "Chưa cập nhật")}</td>
+            <td class="p-3 text-slate-300 text-xs whitespace-nowrap">
+              <span class="block text-slate-200">${window.escapeHtml(window.formatCreatedDate(data.createdAt))}</span>
+              <span class="text-[11px] text-slate-500">${window.escapeHtml(data.createdBy || "")}</span>
+            </td>
+            <td class="p-3 text-center space-x-2 whitespace-nowrap">
+              <button type="button" onclick="window.viewDetail(${index})" class="bg-teal-600/20 hover:bg-teal-600 text-teal-300 hover:text-white px-3 py-1 rounded-lg text-xs font-semibold transition border border-teal-500/30 cursor-pointer">Xem</button>
+              <button type="button" onclick="window.deleteElevator('${window.escapeHtml(data.id)}', ${index})" class="text-red-400 hover:text-red-300 text-xs px-2 py-1 cursor-pointer">Xóa</button>
+            </td>
+          </tr>
+        `;
+      });
+
+      updateListFooterMeta();
+    }
+
+    window.loadElevators = async function() {
+      const tbody = document.getElementById("elevatorTableBody");
+      tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">Đang tải dữ liệu...</td></tr>`;
+      try {
+        const querySnapshot = await getDocs(collection(db, "elevators"));
+        const loaded = [];
+        querySnapshot.forEach((docSnap) => {
+          loaded.push({ id: docSnap.id, ...docSnap.data() });
+        });
+
+        loaded.sort((a, b) => {
+          const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return (Number.isNaN(timeB) ? 0 : timeB) - (Number.isNaN(timeA) ? 0 : timeA);
+        });
+
+        elevatorsCache = loaded;
+        window.syncProjectsFromRecords(elevatorsCache);
+        renderElevatorRows();
+      } catch (e) {
+        console.error("Lỗi tải dữ liệu: ", e);
+        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-400">Lỗi kết nối database (${window.escapeHtml(e.code || e.message || "")}).</td></tr>`;
+      }
+    };
+
+    window.persistModalChecklist = async function(updatedState) {
+      if (activeModalIndex === null || !elevatorsCache[activeModalIndex]) return;
+      const item = elevatorsCache[activeModalIndex];
+      const normalized = normalizeChecklistState(updatedState);
+      const summary = computeChecklistSummary(normalized);
+      item.checklistGroups = normalized;
+      item.checklistSummary = summary;
+      renderElevatorRows();
+
+      try {
+        await updateDoc(doc(db, "elevators", String(item.id)), {
+          checklistGroups: normalized,
+          checklistSummary: summary
+        });
+      } catch (e) {
+        console.error("Lỗi lưu checklist chi tiết: ", e);
+      }
+    };
+
+    window.viewDetail = function(idx) {
+      const item = elevatorsCache[idx];
+      if (!item) return;
+      activeModalIndex = idx;
+
+      const typesList = Array.isArray(item.elevatorTypes) && item.elevatorTypes.length
+        ? item.elevatorTypes
+        : (item.elevatorGroup ? String(item.elevatorGroup).split(",").map(s => s.trim()).filter(Boolean) : []);
+
+      const typeText = typesList.length ? ` | Kiểu thang: ${typesList.join(", ")}` : "";
+      document.getElementById("modalTitle").innerText = item.name || "Chi tiết hồ sơ";
+      document.getElementById("modalSub").innerText = "Địa chỉ: " + (item.address || "") + typeText + " | Hãng/Tủ: " + (item.controller || "");
+      document.getElementById("modalCreatedAt").innerText = "Ngày tạo: " + window.formatCreatedDate(item.createdAt) + " • Bởi: " + (item.createdBy || "N/A");
+
+      window.modalChecklistData = normalizeChecklistState(item.checklistGroups);
+      window.modalExpandedGroups = {};
+      window.renderModalChecklistSection();
+
+      const noteBox = document.getElementById("modalNoteDisplay");
+      const lines = window.formatBulletsText(item.note);
+      if (lines.length) {
+        noteBox.innerHTML = lines.map(line => `<div class="flex items-start gap-2"><span class="text-teal-400">•</span><span>${window.escapeHtml(line)}</span></div>`).join("");
+      } else {
+        noteBox.innerHTML = `<span class="italic text-slate-500">Không có ghi chú kỹ thuật nào.</span>`;
+      }
+
+      document.getElementById("detailModal").classList.remove("hidden");
+    };
+
+    window.confirmModalMaintenance = function() {
+      alert("Đã xác nhận hoàn tất bảo trì hệ thống!");
+    };
+
+    window.closeModal = function() {
+      activeModalIndex = null;
+      document.getElementById("detailModal").classList.add("hidden");
+    };
+
+    window.deleteElevator = async function(id, idx) {
+      const targetId = id || elevatorsCache[idx]?.id;
+      if (!targetId) {
+        return alert("Không tìm thấy ID hồ sơ để xóa!");
+      }
+      if (!confirm("Mày có chắc muốn xóa hồ sơ thang máy này không?")) return;
+
+      try {
+        await deleteDoc(doc(db, "elevators", String(targetId)));
+        elevatorsCache = elevatorsCache.filter(item => item.id !== targetId);
+        renderElevatorRows();
+      } catch (e) {
+        console.error("Lỗi xóa từng hồ sơ: ", e);
+        alert("Không thể xóa hồ sơ: " + (e.code || e.message || "Lỗi không xác định"));
+      }
+    };
+
+    window.deleteAllElevators = async function() {
+      if (!elevatorsCache.length) {
+        return alert("Danh sách hiện đang trống!");
+      }
+      if (!confirm(`Mày có chắc muốn XÓA TOÀN BỘ ${elevatorsCache.length} hồ sơ thang máy trong danh sách không?`)) return;
+      if (!confirm("Xác nhận lần cuối: Hành động này sẽ xóa sạch dữ liệu trên hệ thống, không thể hoàn tác!")) return;
+
+      try {
+        const snapshot = await getDocs(collection(db, "elevators"));
+        await Promise.all(snapshot.docs.map(d => deleteDoc(doc(db, "elevators", d.id))));
+        elevatorsCache = [];
+        renderElevatorRows();
+        alert("Đã xóa toàn bộ danh sách thang máy!");
+      } catch (e) {
+        console.error("Lỗi xóa danh sách: ", e);
+        alert("Có lỗi khi xóa toàn bộ danh sách: " + (e.code || e.message || "Lỗi không xác định"));
+      }
+    };
+  </script>
+    window.addEventListener("DOMContentLoaded", () => {
+      const hideNetlifyBadge = () => {
+        document.querySelectorAll("div, a, span, button").forEach((el) => {
+          const text = (el.textContent || "").trim();
+          const style = window.getComputedStyle(el);
+          const isFixedOrAbsolute =
+            style.position === "fixed" || style.position === "absolute";
+
+          if (
+            isFixedOrAbsolute &&
+            text.includes("Powered by Netlify") &&
+            el.offsetHeight < 120
+          ) {
+            el.style.setProperty("display", "none", "important");
+          }
+        });
+      };
+
+      hideNetlifyBadge();
+      const observer = new MutationObserver(hideNetlifyBadge);
+      observer.observe(document.body, { childList: true, subtree: true });
+    });
+  </script>
+</body>
+</html>
